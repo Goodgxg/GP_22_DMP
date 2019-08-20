@@ -1,0 +1,51 @@
+要求：
+	方法名、变量名要有意义，如果有人还用m1/m2作为方法名或rdd1/rdd2作为变量名直接不给分
+	关键的代码或方法要有注释
+	相同的逻辑要抽取方法，善于抽取方法
+	代码力求简洁高效
+
+
+需求：按区域统计top3热门商品
+实现思路：
+  1. 创建user_visit_action、product_info表到当前SparkSession并加载数据
+  2. 从表user_visit_action中获取基础数据：用户点击流日志
+    获取的字段有：city_id、click_product_id
+    获取条件：日期范围为：startDate="2019-08-15"，endDate="2019-08-15"
+             click_product_id（用户点击商品id字段）限定为不为空
+  3. 获取mysql的city_info表的城市信息
+  4. 将点击流日志和城市信息进行join，生成临时表tmp_click_product_basic，字段有：cityId, cityName, area, click_product_id
+  5. 根据表tmp_click_product_basic，统计各区域商品点击次数并生成临时表tmp_area_product_click_count，字段有：area,product_id,click_count,city_infos
+    city_infos的统计要求：
+      因为每个区域有很多城市，需要将各个区域涉及到的城市信息拼接起来，比如华南区有广州和三亚，拼接后的city_infos为："4:三亚,3:广州"，其中数字4和3为city_id
+      此时需要用到GroupConcatDistinctUDAF函数
+  6. 将各区域商品点击次数临时表tmp_area_product_click_count的product_id字段去关联商品信息表(product_info)的product_id
+    product_info表的extend_info字段值为json串，需要特殊处理："0"和"1"分别代表了自营和第三方商品
+    需要用GetJsonObjectUDF函数是从json串中获取指定字段的值，如果product_status为0，返回值为"自营"，如果为1，返回值为"第三方"
+    生成临时表tmp_area_fullprod_click_count的字段有：
+    area,product_id,click_count,city_infos,product_name,product_status
+  7. 将tmp_area_fullprod_click_count进行统计每个区域的top3热门商品（使用开窗函数进行子查询）
+     统计过程中的外层查询需要增加area_level字段，即按照区域进行分级：
+     区域有：华北、华东、华南、华中、西北、西南、东北
+        A级：华北、华东
+        B级：华南、华中
+        C级：西北、西南
+        D级：东北
+     得到的结果字段有：area、area_level、product_id、city_infos、click_count、product_name、product_status
+  8. 将结果保存到mysql的area_top3_product表中
+
+
+部分结果数据如下：
++----+----------+----------+-----------+--------------+------------+--------------+
+|area|area_level|product_id|click_count|    city_infos|product_name|product_status|
++----+----------+----------+-----------+--------------+------------+--------------+
+|华东|       A级|        87|         11| 1:上海,2:南京|   product87|        第三方|
+|华东|       A级|        62|         10| 1:上海,2:南京|   product62|          自营|
+|华东|       A级|         5|         10| 1:上海,2:南京|    product5|          自营|
+|西北|       C级|        13|          8|        7:西安|   product13|        第三方|
+|西北|       C级|        97|          8|        7:西安|   product97|        第三方|
+|西北|       C级|        36|          7|        7:西安|   product36|        第三方|
+
+
+
+
+
