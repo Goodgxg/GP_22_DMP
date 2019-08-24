@@ -26,6 +26,10 @@ object TagsAd extends Tag{
     if(StringUtils.isNotBlank(adName)){
       list:+=("LN"+adName,1)
     }
+
+    // 渠道标签
+    val channel = row.getAs[Int]("adplatformproviderid")
+    list:+=("CN"+channel,1)
     list
   }
 }
