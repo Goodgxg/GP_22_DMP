@@ -2,11 +2,11 @@ package com.Tags
 
 import com.typesafe.config.ConfigFactory
 import com.utils.TagUtils
-import org.apache.hadoop.hbase.{HColumnDescriptor, HTableDescriptor, TableName}
 import org.apache.hadoop.hbase.client.{ConnectionFactory, Put}
 import org.apache.hadoop.hbase.io.ImmutableBytesWritable
 import org.apache.hadoop.hbase.mapred.TableOutputFormat
 import org.apache.hadoop.hbase.util.Bytes
+import org.apache.hadoop.hbase.{HColumnDescriptor, HTableDescriptor, TableName}
 import org.apache.hadoop.mapred.JobConf
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
@@ -14,7 +14,7 @@ import org.apache.spark.{SparkConf, SparkContext}
 /**
   * 上下文标签
   */
-object TagsContext {
+object TagsContext3 {
   def main(args: Array[String]): Unit = {
     System.setProperty("hadoop.home.dir", "D:\\Huohu\\下载\\hadoop-common-2.2.0-bin-master")
     if(args.length != 5){
@@ -68,7 +68,7 @@ object TagsContext {
       // 接下来所有的标签都在内部实现
         .map(row=>{
           // 取出用户Id
-          val userId = TagUtils.getOneUserId(row)
+          val userId = TagUtils.getAllUserId(row)
          // 接下来通过row数据 打上 所有标签（按照需求）
         val adList = TagsAd.makeTags(row)
         val appList = TagAPP.makeTags(row,broadcast)
@@ -85,18 +85,6 @@ object TagsContext {
           .groupBy(_._1)
           .mapValues(_.foldLeft[Int](0)(_+_._2))
           .toList
-      ).map{
-      case(userid,userTag)=>{
-
-        val put = new Put(Bytes.toBytes(userid))
-        // 处理下标签
-        val tags = userTag.map(t=>t._1+","+t._2).mkString(",")
-        put.addImmutable(Bytes.toBytes("tags"),Bytes.toBytes(s"$days"),Bytes.toBytes(tags))
-        (new ImmutableBytesWritable(),put)
-      }
-    }
-      // 保存到对应表中
-      .saveAsHadoopDataset(jobconf)
-
+      )
   }
 }

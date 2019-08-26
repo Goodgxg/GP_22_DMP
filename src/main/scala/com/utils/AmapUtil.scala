@@ -12,7 +12,7 @@ object AmapUtil {
     //https://restapi.amap.com/v3/geocode
     // /regeo?output=xml&location=116.310003,39.991957&key=<用户的key>&radius=1000&extensions=all
     val location = long+","+lat
-    val urlStr = "https://restapi.amap.com/v3/geocode/regeo?location="+location+"&key=2d24d3f8f2e10bca938db3886f690fc3"
+    val urlStr = "https://restapi.amap.com/v3/geocode/regeo?key=2d24d3f8f2e10bca938db3886f690fc3&location="+location
     // 调用请求
     val jsonstr = HttpUtil.get(urlStr)
     // 解析json串
