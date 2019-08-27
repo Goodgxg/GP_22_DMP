@@ -8,6 +8,8 @@ import org.apache.hadoop.hbase.mapred.TableOutputFormat
 import org.apache.hadoop.hbase.util.Bytes
 import org.apache.hadoop.hbase.{HColumnDescriptor, HTableDescriptor, TableName}
 import org.apache.hadoop.mapred.JobConf
+import org.apache.spark.graphx.{Edge, Graph}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.SQLContext
 import org.apache.spark.{SparkConf, SparkContext}
 
@@ -33,6 +35,8 @@ object TagsContext3 {
     // 创建Hadoop任务
     val configuration = sc.hadoopConfiguration
     configuration.set("hbase.zookeeper.quorum",load.getString("hbase.host"))
+//    configuration.set("hbase.zookeeper.quorum", load.getString("hbase.zookeeper.quorum"))
+//    configuration.set("hbase.zookeeper.property.clientPort", load.getString("hbase.zookeeper.property.clientPort"))
     // 创建HbaseConnection
     val hbconn = ConnectionFactory.createConnection(configuration)
     val hbadmin = hbconn.getAdmin
@@ -64,27 +68,56 @@ object TagsContext3 {
     val stopword = sc.textFile(stopPath).map((_,0)).collectAsMap()
     val bcstopword = sc.broadcast(stopword)
     // 过滤符合Id的数据
-    df.filter(TagUtils.OneUserId)
+    val baseRDD = df.filter(TagUtils.OneUserId)
       // 接下来所有的标签都在内部实现
-        .map(row=>{
-          // 取出用户Id
-          val userId = TagUtils.getAllUserId(row)
-         // 接下来通过row数据 打上 所有标签（按照需求）
-        val adList = TagsAd.makeTags(row)
-        val appList = TagAPP.makeTags(row,broadcast)
-        val keywordList = TagKeyWord.makeTags(row,bcstopword)
-        val dvList = TagDevice.makeTags(row)
-        val loactionList = TagLocation.makeTags(row)
-        val business = BusinessTag.makeTags(row)
-      (userId,adList++appList++keywordList++dvList++loactionList++business)
-        })
-      .reduceByKey((list1,list2)=>
-        // List(("lN插屏",1),("LN全屏",1),("ZC沈阳",1),("ZP河北",1)....)
-        (list1:::list2)
-          // List(("APP爱奇艺",List()))
-          .groupBy(_._1)
-          .mapValues(_.foldLeft[Int](0)(_+_._2))
-          .toList
-      )
+      .map(row=>{
+      val userList: List[String] = TagUtils.getAllUserId(row)
+      (userList,row)
+    })
+    // 构建点集合
+    val vertiesRDD: RDD[(Long, List[(String, Int)])] = baseRDD.flatMap(tp => {
+      val row = tp._2
+      // 所有标签
+      val adList = TagsAd.makeTags(row)
+      val appList = TagAPP.makeTags(row, broadcast)
+      val keywordList = TagKeyWord.makeTags(row, bcstopword)
+      val dvList = TagDevice.makeTags(row)
+      val loactionList = TagLocation.makeTags(row)
+      val business = BusinessTag.makeTags(row)
+      val AllTag = adList ++ appList ++ keywordList ++ dvList ++ loactionList ++ business
+      // List((String,Int))
+      // 保证其中一个点携带者所有标签，同时也保留所有userId
+      val VD = tp._1.map((_, 0)) ++ AllTag
+      // 处理所有的点集合
+      tp._1.map(uId => {
+        // 保证一个点携带标签 (uid,vd),(uid,list()),(uid,list())
+        if (tp._1.head.equals(uId)) {
+          (uId.hashCode.toLong, VD)
+        } else {
+          (uId.hashCode.toLong, List.empty)
+        }
+      })
+    })
+    // vertiesRDD.take(50).foreach(println)
+    // 构建边的集合
+    val edges: RDD[Edge[Int]] = baseRDD.flatMap(tp => {
+      // A B C : A->B A->C
+      tp._1.map(uId => Edge(tp._1.head.hashCode, uId.hashCode, 0))
+    })
+    //edges.take(20).foreach(println)
+    // 构建图
+    val graph = Graph(vertiesRDD,edges)
+    // 取出顶点 使用的是图计算中的连通图算法
+    val vertices = graph.connectedComponents().vertices
+    // 处理所有的标签和id
+    vertices.join(vertiesRDD).map{
+      case (uId,(conId,tagsAll))=>(conId,tagsAll)
+    }.reduceByKey((list1,list2)=>{
+      // 聚合所有的标签
+      (list1++list2).groupBy(_._1).mapValues(_.map(_._2).sum).toList
+    })
+      .take(20).foreach(println)
+
+    sc.stop()
   }
 }
