@@ -106,25 +106,25 @@ object OSType {
     spark.stop()
   }
 
-  //  def data2Mysql(part: Iterator[(String, List[Double])]): Unit = {
-  //    val conn: Connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/dmp","root","123456")
-  //    val pre: PreparedStatement = conn.prepareStatement("insert into t_foreach values(?,?,?,?,?,?,?,?,?,?)")
-  //    part.foreach(x => {
-  //      pre.setString(1, x._1)
-  //      pre.setDouble(2, x._2(0))
-  //      pre.setDouble(3, x._2(1))
-  //      pre.setDouble(4, x._2(2))
-  //      pre.setDouble(7, x._2(5))
-  //      pre.setDouble(8, x._2(6))
-  //      pre.setDouble(5, x._2(3))
-  //      pre.setDouble(6, x._2(4))
-  //      pre.setDouble(9, x._2(7))
-  //      pre.setDouble(10, x._2(8))
-  //      pre.execute()
-  //    })
-  //    pre.close()
-  //    conn.close()
-  //  }
+//    def data2Mysql(part: Iterator[(String, List[Double])]): Unit = {
+//      val conn: Connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/dmp","root","123456")
+//      val pre: PreparedStatement = conn.prepareStatement("insert into t_foreach values(?,?,?,?,?,?,?,?,?,?)")
+//      part.foreach(x => {
+//        pre.setString(1, x._1)
+//        pre.setDouble(2, x._2(0))
+//        pre.setDouble(3, x._2(1))
+//        pre.setDouble(4, x._2(2))
+//        pre.setDouble(7, x._2(5))
+//        pre.setDouble(8, x._2(6))
+//        pre.setDouble(5, x._2(3))
+//        pre.setDouble(6, x._2(4))
+//        pre.setDouble(9, x._2(7))
+//        pre.setDouble(10, x._2(8))
+//        pre.execute()
+//      })
+//      pre.close()
+//      conn.close()
+//    }
   def getC3p0Data(): ComboPooledDataSource = {
     val source = new ComboPooledDataSource()
     source.setJdbcUrl("jdbc:mysql://localhost:3306/dmp")

@@ -55,12 +55,9 @@ object MediaAnalyze {
       MediaData(x._1, x._2(0), x._2(1), x._2(2), x._2(5), x._2(6), x._2(3), x._2(4), x._2(7), x._2(8))
     }).toDF
     SaveJDBCUtils.saveDataToMysql(saveRes,"t_media")
-
     spark.stop()
     sc.stop()
   }
-
-
 }
 case class MediaData(
                         appname: String,

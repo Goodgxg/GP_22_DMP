@@ -2,7 +2,7 @@ package com.ETL
 
 import java.util.Properties
 
-import com.utils.Utils2Type
+import com.utils.{SaveJDBCUtils, Utils2Type}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{DataFrame, Dataset, SaveMode, SparkSession}
@@ -115,13 +115,20 @@ object txt2ParquetDemo {
       ))
     import spark.implicits._
     val dataFrame = rowData.toDF()
+
+    dataFrame.createOrReplaceTempView("t_test")
+    val resultDF: DataFrame = spark.sql("select long_fix,lat from t_test")
+    SaveJDBCUtils.saveDataToMysql(resultDF,"longandlat")
     //保存到数据库
     //    SaveMysql(dataFrame, spark)
     //用sparkcore实现并保存到磁盘(json格式)
-    val seqData: RDD[SeqResult] = SparkCore(rowData, outputPath)
-    val seqRes = seqData.toDF()
-    seqRes.write.json(outputPath)
-    //    dataFrame.write.parquet(outputPath)
+//    val seqData: RDD[SeqResult] = SparkCore(rowData, outputPath)
+//    val seqRes = seqData.toDF()
+
+//    seqRes.write.json(outputPath)
+//    seqRes.write.partitionBy("provincename","cityname").parquet(outputPath)
+//        dataFrame.coalesce(1).write.parquet(outputPath)
+
     spark.stop()
     sc.stop()
   }
